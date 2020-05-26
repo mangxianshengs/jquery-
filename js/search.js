@@ -41,6 +41,7 @@
             this.autocomplete();
         }
     }
+    //默认参数
     Search.DEFAULTS = {
         autocomplete: false,
         url: 'https://suggest.taobao.com/sug?code=utf-8&_ksTS=1484204931352_18291&callback=jsonp18292&k=1&area=c2c&bucketid=6&q=',
@@ -62,7 +63,6 @@
         this.$input
             .on('input', function() {
                 if (self.options.getDataInterval) {
-
                     clearTimeout(timer);
                     timer = setTimeout(function() {
                         self.getData();
@@ -70,7 +70,6 @@
                 } else {
                     self.getData();
                 }
-
             })
             .on('focus', $.proxy(this.showLayer, this))
             .on('click', function() {
@@ -87,6 +86,22 @@
         if (inputVal == '') return self.$elem.trigger('search-noData');
         if(cache.readData(inputVal)) return self.$elem.trigger('search-getData',[cache.readData(inputVal)]);
         if (this.jqXHR) this.jqXHR.abort();
+        // this.jqXHR=this.getAjax({
+        //     url:'https://suggest.taobao.com/sug?code=utf-8&_ksTS=1484204931352_18291&callback=jsonp18292&k=1&area=c2c&bucketid=6&q=',
+        //     data:inputVal,
+        //     method:'get',
+        //     async:true,
+        //     success:function(data){
+        //         console.log(data);
+        //     },
+        //     error:function(data){
+        //         console.log(data);
+        //     }
+        // });
+        // this.jqXHR=this.getJSONP(
+        //     'https://suggest.taobao.com/sug?code=utf-8&_ksTS=1484204931352_18291&k=1&area=c2c&bucketid=6&q='+inputVal,function(data){
+        //     console.log(data);
+        // });
         this.jqXHR = $.ajax({
             url: this.options.url + inputVal,
             dataType: 'jsonp'
@@ -101,11 +116,75 @@
         }).always(function() {
             self.jqXHR = null;
         });
-
+    };
+    Search.prototype.getAjax = function(options){
+        var xhr=null,
+            url=options.url,
+            method=options.method || 'get',
+            async=typeof(options.async) === 'undefined' ? true : options.async,
+            data=options.data || null,
+            params='',
+            callback=options.success,
+            error=options.error;
+            if(data){
+                for(var i in data){
+                    params+=i+'='+data[i]+'&';
+                }
+                params=params.replace(/&$/,"");
+            }
+            if(method=='get'){
+                url+='?'+params;
+            }
+        if(typeof XMLHttpRequest !='undefined'){
+            xhr=new XMLHttpRequest();
+        }else{
+            xhr=new ActiveXObject('Microsoft.XMLHTTP');
+        }
+        xhr.onreadystatechange=function(){
+            if(xhr.readyState===4){
+                if((xhr.status>=200 && xhr.status<300)||xhr.status===304){
+                    callback && callback(JSON.parse(xhr.responseText));
+                }else{
+                    error && error('请求失败');
+                }
+            }
+        };
+        xhr.open(method,url,async);
+        xhr.setRequestHeader('Content-type','application/x-www-form-urlencode');
+        xhr.send(params);
+    };
+    Search.prototype.getJSONP=function(url,callback){
+        if(!url){
+            return;
+        }
+        var a=['a','b','c','d','e','f','g','i','h','j'],
+            r1=Math.floor(Math.random()*10),
+            r2=Math.floor(Math.random()*10),
+            r3=Math.floor(Math.random()*10),
+            name='getJSONP'+a[r1]+a[r2]+a[r3],
+            cbname='getJSONP.'+name;
+            if(url.indexOf('?')===-1){
+                url+='?jsonp='+cbname;
+            }else{
+                url+='&callback='+cbname;
+            }
+            url+='&callback=abc';
+            var script=document.createElement('script');
+            Search.prototype.getJSONP[name] = function(data){
+                try{
+                    callback && callback(data);
+                }catch(e){
+                    console.log(e);
+                }finally{
+                    delete getJSONP[name];
+                    script.parentNode.removeChild(script);
+                }
+            };
+            script.src=url;
+            document.getElementsByTagName("head")[0].appendChild(script);
     };
     Search.prototype.showLayer = function() {
         if (!this.loaded) return;
-        // if (this.$layer.children().length === 0) return;
         this.$layer.showHide('show');
     };
     Search.prototype.hideLayer = function() {
@@ -115,7 +194,6 @@
     Search.prototype.getInputVal = function() {
         return $.trim(this.$input.val());
     };
-
     Search.prototype.setInputVal = function(val) {
         this.$input.val(removeHtmlTags(val));
 
@@ -123,7 +201,6 @@
             return str.replace(/<(?:[^>'"]|"[^"]*"|'[^']*')*>/g, '');
         }
     };
-
     Search.prototype.appendLayer = function(html) {
         this.$layer.html(html);
         this.loaded = !!html;
